@@ -1,3 +1,4 @@
+### SRC - A good idea, but please update on the basis of what you saw in class
 from random import *
 
 def checker(pchoice,cchoice):
