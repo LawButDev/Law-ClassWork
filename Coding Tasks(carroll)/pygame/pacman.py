@@ -3,32 +3,38 @@ import random
 import math
 from math import atan2, degrees, pi
 
+from pathfinding.core.diagonal_movement import DiagonalMovement
+from pathfinding.core.grid import Grid
+from pathfinding.finder.a_star import AStarFinder
+
 # -- global constants
 map =\
-    [["#","#","#","#","_","_","#","#","#","#"],
-    ["|"," "," "," "," "," "," "," "," ","|"],
-    ["|"," "," "," "," "," "," "," "," ","|"],
-    ["#","#"," ","#","#","#","#","#"," ","#"],
-    ["#"," "," "," "," "," ","#"," "," ","#"],
-    ["#"," ","#"," "," "," "," "," "," ","#"],
-    ["#"," ","#"," "," "," ","#"," "," ","#"],
-    ["#"," ","#","#","#"," ","#"," "," ","#"],
-    ["#"," "," "," "," "," ","#"," "," ","#"],
-    ["#"," "," "," "," "," ","#"," "," ","#"],
-    ["#"," ","#","#","#"," ","#","#"," ","#"],
-    ["|"," "," "," ","#"," ","#"," "," ","|"],
-    ["|"," "," "," ","#"," ","#"," "," ","|"],
-    ["#","#"," "," ","#"," ","#"," "," ","#"],
-    ["#"," "," "," "," "," "," "," "," ","#"],
-    ["#"," ","#"," "," "," "," "," "," ","#"],
-    ["#"," ","#"," ","#"," "," "," "," ","#"],
-    ["#"," ","#"," ","#"," ","#"," "," ","#"],
-    ["#"," "," "," "," "," "," "," ","e","#"],
-    ["#","#","#","#","_","_","#","#","#","#"],]
+    [\
+    "###########",
+    "#         #",
+    "# ####    #",
+    "#      ## #",
+    "# ####    #",
+    "# #    #  #",
+    "# # ## ## #",
+    "#         #",
+    "## ### ####",
+    "|  #   #  |",
+    "|  # # #  |",   
+    "|  #   #  |",
+    "#### ### ##",
+    "#         #",
+    "# ## ## # #",
+    "#  #    # #",
+    "#    #### #",
+    "# ##      #",
+    "#    #### #",
+    "#e       e#",
+    "###########",]
                         
 
-maxsizex = 20
-maxsizey = 10
+maxsizex = 21
+maxsizey = 11
 #global control variants (to tweak + improve the game
 playermovespeed = 1
 enemymovespeed = 1
@@ -106,11 +112,35 @@ class player(pygame.sprite.Sprite):
         self.speedx = xmult
         self.speedy = ymult
 
-class enemy(pygame.sprite.Sprite):
+class Enemy(pygame.sprite.Sprite):
     # Define the constructor for invader
     def __init__(self, color, width, height, x_ref, y_ref):
         # Call the sprite constructor
         super().__init__()
+        
+        # pathfinding map generation        
+        matrix = [[0 for y in range(maxsizey)] for x in range(maxsizex)] 
+
+        # Create walls on the screen (each tile is 20 x 20 so alter cords)
+        self.hack = pygame.Surface([maxsizex * 20, maxsizey * 20], pygame.SRCALPHA)
+        for y in range(maxsizey):
+            for x in range (maxsizex):
+                if map[x][y] == " ":
+                    #matrix[x][y] = 1
+                    #stlightly randomises map to make enemies move interestingly
+                    randint = random.randint(1,50)
+                    matrix[x][y] = randint     
+                elif map[x][y] == "#" or map[x][y] == "":
+                    matrix[x][y] = 0
+                elif map[x][y] == "|":
+                    matrix[x][y] = 0            
+                elif map[x][y] == "_":
+                    matrix[x][y] = 0
+                elif map[x][y] == "o":
+                    matrix[x][y] = 1
+                elif map[x][y] == "e": 
+                    matrix[x][y] = 1
+        self.grid = Grid(matrix=matrix)
         # Create a sprite and fill it with colour
         self.image = pygame.Surface([width,height])
         #self.image.fill(color)
@@ -123,52 +153,54 @@ class enemy(pygame.sprite.Sprite):
         self.speedy = 0
         self.width = width
         self.height = height
+        self.targetx = self.rect.x + self.width // 2
+        self.targety = self.rect.y + self.height // 2
     def update(self):
+        # definitions for later calculations
         xgrid = (self.rect.x + self.width - 1)// 20  
-        ygrid = (self.rect.y + self.height - 1) // 20 
-        xdir = 0
-        ydir = 0
-        routefound = False
-        closestroute = (9000,0,0)
-        while not routefound:
-            dire = ""
-            dx = pacman.rect.x - self.rect.x
-            dy = pacman.rect.y - self.rect.y
-            rads = atan2(-dy,dx)
-            rads %= 2*pi
-            degs = degrees(rads)
-            for xdir in range (-1,2):                
-                for ydir in range(-1,2):
-                    if (map[((self.rect.x + self.width // 2) + (self.width //2) * xdir + xdir )// 20][((self.rect.y + self.height // 2) + (self.height //2) * ydir + ydir )// 20] != ""):
-                        dx = xdir
-                        dy = ydir
-                        rads = atan2(-dy,dx)
-                        rads %= 2*pi
-                        degs2 = degrees(rads)
-                        not0 = True
-                        if (xdir == 0) and (ydir == 0):
-                            not0 = False
-                        if (closestroute[0] >= abs(degs-degs2)) and (not0):
-                            closestroute = (int(abs(degs-degs2)),xdir,ydir)
-            routefound = True
-            self.rect.x += closestroute[1] * enemymovespeed / speedmultiplyer
-            self.rect.y += closestroute[2] * enemymovespeed / speedmultiplyer
-            print("traveldir: " + str(closestroute[1]) + "," + str(closestroute[2]) + " angle: " + str(closestroute[0]))
-                    
-        if (pacman.rect.x > self.rect.x + self.width//2):
-            xdir = 1
-            dire += "R"
-        elif (pacman.rect.x < self.rect.x + self.width // 2):
-            xdir = -1
-            dire += "L"
-        if (pacman.rect.y > self.rect.y + self.height // 2):
-            ydir = 1
-            dire += "D"
-        elif (pacman.rect.y < self.rect.y + self.height // 2):
-            ydir = -1
-            dire += "U"
-            
-        print("y" + str(ygrid),"x" + str(xgrid) + dire)
+        ygrid = (self.rect.y + self.height - 1) // 20
+        centrex = self.rect.x + self.width // 2
+        centrey = self.rect.y + self.height // 2
+
+        #pathfinding logic
+
+        ## if the target square has been reached sets the next one        
+        if (self.targetx == centrex) and (self.targety == centrey):
+            if ((pacman.rect.x // 20 > 0) and (pacman.rect.y // 20 > 0) and (pacman.rect.x // 20 + 1  <= maxsizex - 1 ) and (pacman.rect.y  // 20 + 1 <= maxsizey -1 )):   
+                start = self.grid.node(ygrid, xgrid)
+                end = self.grid.node((pacman.rect.y + pacman.rect.height // 2) //  20, (pacman.rect.x + pacman.rect.width // 2) // 20)
+                finder = AStarFinder(diagonal_movement=DiagonalMovement.never)
+                #self.grid.cleanup()
+                path, runs = finder.find_path(start, end, self.grid)
+                self.grid.cleanup()
+                if len(path) <= 1:
+                    oneblock = True
+                else:
+                    oneblock = False
+                    self.targetx = (int(path[1][1]) * 20 + 10)
+                    self.targety = (int(path[1][0]) * 20 + 10)
+                #print(path)
+                #print('operations:', runs, 'path length:', len(path))
+                #print(self.grid.grid_str(path=path, start=start, end=end))
+        ## moves the enemy to the target square
+        else:
+            speedmultiplyer = 0
+            xdir = 0
+            ydir = 0
+            if centrex < self.targetx:
+                speedmultiplyer += 1
+                xdir = 1
+            elif centrex > self.targetx:
+                speedmultiplyer += 1
+                xdir = -1
+            elif centrey < self.targety:
+                speedmultiplyer += 1
+                ydir = 1
+            elif centrey > self.targety:
+                speedmultiplyer += 1
+                ydir = -1
+            self.rect.x += xdir * enemymovespeed / speedmultiplyer
+            self.rect.y += ydir * enemymovespeed / speedmultiplyer
         
 
 # -- Exit game flag set to false
@@ -187,19 +219,25 @@ pointpuck_list = pygame.sprite.Group()
 player_list = pygame.sprite.Group()
 enemy_list = pygame.sprite.Group()
 
+matrix = [[0 for y in range(maxsizey)] for x in range(maxsizex)] 
+
 # Create walls on the screen (each tile is 20 x 20 so alter cords)
 for y in range(maxsizey):
     for x in range (maxsizex):
+        if map[x][y] == " ":
+            matrix[x][y] = 1
         if map[x][y] == "#" or map[x][y] == "":
             my_wall = tile(BLUE, 20, 20, x*20, y *20)
             wall_list.add(my_wall)
             all_sprites_list.add(my_wall)
+            matrix[x][y] = 0
         elif map[x][y] == "|":
             if y > maxsizey / 2:
                 my_wall = tile(DARKGRAY, 20, 10, x*20, (y *20)+10)
             else:
                 my_wall = tile(DARKGRAY, 20, 10, x*20, (y *20))
             all_sprites_list.add(my_wall)
+            matrix[x][y] = 0
             
         elif map[x][y] == "_":
             if x > maxsizex / 2:
@@ -207,19 +245,23 @@ for y in range(maxsizey):
             else:
                 my_wall = tile(DARKGRAY, 10, 20, x*20, (y *20))
             all_sprites_list.add(my_wall)
+            matrix[x][y] = 0
 
         elif map[x][y] == "o":
             my_pp = pointpuck(WHITE, 8,8,x*20 + 6 ,y*20 + 6)
             all_sprites_list.add(my_pp)
             pointpuck_list.add(my_pp)
+            matrix[x][y] = 1
 
         elif map[x][y] == "e":            
-            enemy = enemy(RED,10,10,x*20,y*20)
+            enemy = Enemy(RED,10,10,x*20,y*20)
             enemy_list.add(enemy)
             all_sprites_list.add(enemy)
+            matrix[x][y] = 1
+grid = Grid(matrix=matrix)
 
-pacman = player(YELLOW,10,10,20,20)
-all_sprites_list.add(pacman)
+pacman = player(YELLOW,10,10,20*1,20*5)
+#all_sprites_list.add(pacman)
 player_list.add(pacman)
 
 high = 0
@@ -297,9 +339,9 @@ while not done:
 
         # -- Draw here
         all_sprites_list.draw(screen)
-
         all_sprites_list.update()
-
+        player_list.draw(screen)
+        pacman.update()
         text = font.render(" | score: " + str(pacman.score) \
                            + " | lives: " + str(pacman.lives) + " | ", True, WHITE)
         textRect = text.get_rect()
@@ -320,14 +362,18 @@ while not done:
                     pacman.lives = startinglives
                     for foo in pointpuck_list:
                         foo.kill()
+                    for foo in enemy_list:
+                        foo.kill()
                     pacman.score = 0
                     pacman.rect.x = 20
                     pacman.rect.y = 20
                     for y in range(maxsizey):
                         for x in range (maxsizex):
                             if map[x][y] == "e":
-                                enemy.rect.x = x * 20
-                                enemy.rect.y = y * 20
+                                enemy = Enemy(RED,10,10,x*20,y*20)
+                                enemy_list.add(enemy)
+                                all_sprites_list.add(enemy)
+                                
                     
         screen.fill(BLACK)
 
