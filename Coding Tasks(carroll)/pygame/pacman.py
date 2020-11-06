@@ -290,21 +290,22 @@ while not done:
 
 
         # -- Game Logic goes after this comment
-        if pointspawncounter <= pointspawnfrequency:
-            pointspawncounter+= 1
-            if pointspawncounter == pointspawnfrequency:            
-                puckspawned = False
-                while not puckspawned:
-                    xpos = random.randrange(0,maxsizex)
-                    ypos = random.randrange(0,maxsizey)
-                    if map[xpos][ypos] == " ":
-                        puckspawned = True
-                        pointspawncounter = 0
-                        my_pp = pointpuck(WHITE, 8,8,xpos*20 + 6 ,ypos*20 + 6)
-                        all_sprites_list.add(my_pp)
-                        pointpuck_list.add(my_pp)
-                
-                
+        if ((pacman.rect.x // 20 > 0) and (pacman.rect.y // 20 > 0) and (pacman.rect.x // 20 + 1  <= maxsizex - 1 ) and (pacman.rect.y  // 20 + 1 <= maxsizey -1 )):     
+            if pointspawncounter <= pointspawnfrequency:
+                pointspawncounter+= 1
+                if pointspawncounter == pointspawnfrequency:            
+                    puckspawned = False
+                    while not puckspawned:
+                        xpos = random.randrange(0,maxsizex)
+                        ypos = random.randrange(0,maxsizey)
+                        if map[xpos][ypos] == " ":
+                            puckspawned = True
+                            pointspawncounter = 0
+                            my_pp = pointpuck(WHITE, 8,8,xpos*20 + 6 ,ypos*20 + 6)
+                            all_sprites_list.add(my_pp)
+                            pointpuck_list.add(my_pp)
+                    
+                    
         # -- check for collision between pacman and walls
         player_collide_list = pygame.sprite.spritecollide(pacman, wall_list, False)
         for foo in player_collide_list:

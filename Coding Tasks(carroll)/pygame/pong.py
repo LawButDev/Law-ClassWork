@@ -67,6 +67,7 @@ while not done:
     if (((x_padd <= x_val + ball_width) and (x_val <= x_padd + padd_length)) and ((y_padd <= y_val) and (y_val + ball_width <= y_padd + padd_width))):
         x_direction = (x_direction) * (-1)
         ball_speed += ball_speed_increase
+        score += 1
     if x_val + ball_width >= 640:
         x_direction = -ball_speed
     elif x_val + ball_width <= 0:
@@ -75,9 +76,9 @@ while not done:
         y_direction = ball_speed
         x_val = 150
         y_val = 200
-        score += 1
-        if score >= 10:
-            done = True
+        score = 0
+        ##if score >= 10:
+            ##done = True
     if y_val + ball_width >= 450:
         y_direction = -ball_speed
     elif y_val <= 0:
