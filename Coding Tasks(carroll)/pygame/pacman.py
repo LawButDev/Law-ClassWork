@@ -58,7 +58,7 @@ size = (maxsizex * 20,maxsizey*20)
 screen = pygame.display.set_mode(size)
 
 # -- Title of new window/screen
-pygame.display.set_caption("PacMan")
+pygame.display.set_caption("MacPan")
 
 # --- class definitions
 ## -- Define the class tile which is a sprite

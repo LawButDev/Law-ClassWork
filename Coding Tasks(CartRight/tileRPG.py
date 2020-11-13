@@ -139,38 +139,39 @@ class enemy(pygame.sprite.Sprite):
         self.movecounter = 0
     def update(self):
         #definitions for later calculations
-        xgrid = (self.rect.x) // tilesize  
-        ygrid = (self.rect.y) // tilesize
         centrex = self.rect.x + (self.width * tilesize) // 2
         centrey = self.rect.y + (self.height * tilesize) // 2
+        
+        xgrid = (centrex) // tilesize  
+        ygrid = (centrey) // tilesize
 
         #pathfinding logic
-        if (self.targetx == centrex) and (self.targety == centrey):
+        if (self.targetx == xgrid * tilesize) and (self.targety == ygrid * tilesize):
             start = grid.node(ygrid - 1, xgrid - 1)
-            end = grid.node((PC.rect.y + PC.rect.height // 2) //  tilesize, (PC.rect.x + PC.rect.width // 2) // tilesize)
+            end = grid.node((PC.rect.y) //  tilesize, (PC.rect.x) // tilesize)
             path, runs = finder.find_path(start, end, grid)
             grid.cleanup()
             if len(path) <= 1:
                 oneblock = True
             else:
                 oneblock = False
-                self.targetx = (int(path[1][1]) * tilesize + tilesize // 2)
-                self.targety = (int(path[1][0]) * tilesize + tilesize // 2)
+                self.targetx = (int(path[1][1]) * tilesize )
+                self.targety = (int(path[1][0]) * tilesize )
         else:
             if (self.movecounter >= enemymoverate):
                 self.movecounter = 0
                 xdir = 0
                 ydir = 0
-                if centrex < self.targetx:
+                if self.rect.x < self.targetx:
                     xdir = 1
-                elif centrex > self.targetx:
+                elif self.rect.x > self.targetx:
                     xdir = -1
-                elif centrey < self.targety:
+                elif self.rect.y < self.targety:
                     ydir = 1
-                elif centrey > self.targety:
+                elif self.rect.y > self.targety:
                     ydir = -1
-                self.rect.x += xdir * tilesize  // 2
-                self.rect.y += ydir * tilesize // 2
+                self.rect.x += xdir * tilesize  // 1
+                self.rect.y += ydir * tilesize // 1
                 
             else:
                 self.movecounter += 1
