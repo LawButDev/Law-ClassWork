@@ -69,7 +69,7 @@ class Invader(pygame.sprite.Sprite):
         super().__init__()
         #creates a sprite and fill it in with color
         self.image=pygame.Surface([width,height])
-        picture = pygame.image.load("invader.png")
+        picture = pygame.image.load("invader.png").convert()
         picture = pygame.transform.scale(picture, (width, height))
         self.image = picture
         #self.image.fill(color)

@@ -1,4 +1,6 @@
 import pygame
+import random
+import math
 
 from pathfinding.core.diagonal_movement import DiagonalMovement
 from pathfinding.core.grid import Grid
@@ -9,7 +11,20 @@ maxsizex = 25
 maxsizey = 25
 tilesize = 20
 UIsectionsize = 5
-enemymoverate = 60
+enemymoverate = 7
+
+
+# -- Blank Screen
+size = (maxsizex * tilesize,maxsizey*tilesize + UIsectionsize * tilesize)
+screen = pygame.display.set_mode(size)
+
+# -- sprite calls
+outerwallimg = pygame.transform.scale(pygame.image.load("outerwall.png").convert(), (tilesize,tilesize))
+innerwallimg = pygame.transform.scale(pygame.image.load("innerwall.png").convert(), (tilesize,tilesize))
+floorimg = pygame.transform.scale(pygame.image.load("floor.png").convert(), (tilesize,tilesize))
+enemyimg = pygame.transform.scale(pygame.image.load("enemyting.png"), (tilesize,tilesize))
+keyimg = pygame.transform.scale(pygame.image.load("key.png"), (tilesize//2,tilesize//2))
+playerimg = pygame.transform.scale(pygame.image.load("player.png"), (tilesize,tilesize))
 
 map = [\
     "%%%%%%%%%%%%%%%%%%%%%%%%%",
@@ -38,15 +53,15 @@ map = [\
     "%e                     e%",
     "%%%%%%%%%%%%%%%%%%%%%%%%%"]
 
-matrix = [[0 for y in range(maxsizey)] for x in range(maxsizex)]
+matrix = [[0 for x in range(maxsizey)] for y in range(maxsizex)]
 for y in range(maxsizey):
             for x in range (maxsizex):
-                if map[x][y] == " ":
-                    matrix[x][y] = 1  
-                elif map[x][y] == "#" or map[x][y] == "%":
-                    matrix[x][y] = 0
-                elif map[x][y] == "e": 
-                    matrix[x][y] = 1
+                if map[y][x] == " ":
+                    matrix[y][x] = 1  
+                elif map[y][x] == "#" or map[x][y] == "%":
+                    matrix[y][x] = 0
+                elif map[y][x] == "e": 
+                    matrix[y][x] = 1
 grid = Grid(matrix=matrix)
 finder = AStarFinder(diagonal_movement=DiagonalMovement.never)
 
@@ -62,9 +77,6 @@ BLUE =(0,0,255)
 # -- initialise PyGame
 pygame.init()
 
-# -- Blank Screen
-size = (maxsizex * tilesize,maxsizey*tilesize + UIsectionsize * tilesize)
-screen = pygame.display.set_mode(size)
 
 # -- Title of new window/screen
 pygame.display.set_caption("TileRPG")
@@ -79,7 +91,8 @@ class outerwall(pygame.sprite.Sprite):
         super().__init__()
         # Create a sprite and fill it with colour
         self.image = pygame.Surface([width*tilesize,height*tilesize])
-        self.image.fill(color)
+        self.image = outerwallimg
+        #self.image.fill(color)
         self.rect = self.image.get_rect()
         # Set the position of the wall's attributes
         self.rect.x = x_ref
@@ -92,9 +105,31 @@ class innerwall(pygame.sprite.Sprite):
         super().__init__()
         # Create a sprite and fill it with colour
         self.image = pygame.Surface([width*tilesize,height*tilesize])
-        self.image.fill(color)
+        self.image = innerwallimg
         self.rect = self.image.get_rect()
         # Set the position of the wall's attributes
+        self.rect.x = x_ref
+        self.rect.y = y_ref
+        
+class background(pygame.sprite.Sprite):
+    # Define the constructor for the wall
+    def __init__(self, color, width, height, x_ref, y_ref):
+        # Call the sprite constructor
+        super().__init__()
+        # Create a sprite and fill it with colour
+        self.image = pygame.Surface([width*tilesize,height*tilesize])
+        self.image = floorimg
+        self.rect = self.image.get_rect()
+        # Set the position of the wall's attributes
+        self.rect.x = x_ref
+        self.rect.y = y_ref
+
+class key(pygame.sprite.Sprite):
+    def __init__ (self,x_ref,y_ref):
+        super().__init__()
+        self.image = pygame.Surface([tilesize // 2,tilesize // 2])
+        self.image = keyimg
+        self.rect = self.image.get_rect()
         self.rect.x = x_ref
         self.rect.y = y_ref
 
@@ -108,11 +143,13 @@ class player(pygame.sprite.Sprite):
         self.image = pygame.Surface([width,height],pygame.SRCALPHA)
         #self.image.fill(color)
         self.rect = self.image.get_rect()
-        pygame.draw.circle(self.image, color, (width//2, height//2), width//2)
+        ##pygame.draw.circle(self.image, color, (width//2, height//2), width//2)
+        self.image = playerimg
         # Set the position of the player attributes
         self.rect.x = x_ref
         self.rect.y = y_ref
         self.health = 100
+        self.attack = 40
         self.money = 0
         self.score = 0
     def update(self):
@@ -124,8 +161,8 @@ class enemy(pygame.sprite.Sprite):
         # Call the sprite constructor
         super().__init__()
         # Create a sprite and fill it with colour
-        self.image = pygame.Surface([width*tilesize,height*tilesize])
-        self.image.fill(color)
+        self.image = pygame.Surface([width*tilesize,height*tilesize],pygame.SRCALPHA)
+        self.image = enemyimg
         self.width = width
         self.height = height
         self.rect = self.image.get_rect()
@@ -134,6 +171,7 @@ class enemy(pygame.sprite.Sprite):
         self.rect.x = x_ref
         self.rect.y = y_ref
         self.health = 60
+        self.attack = 20
         self.targetx = self.rect.x + self.width // 2
         self.targety = self.rect.y + self.height // 2
         self.movecounter = 0
@@ -142,12 +180,20 @@ class enemy(pygame.sprite.Sprite):
         centrex = self.rect.x + (self.width * tilesize) // 2
         centrey = self.rect.y + (self.height * tilesize) // 2
         
+        if self.health <= 0:
+            new_key = key(centrex,centrey)
+            all_sprites_list.add(new_key)
+            key_list.add(new_key)
+            PC.score += 30 + random.randrange(0,30)
+            self.kill()
+            
+        
         xgrid = (centrex) // tilesize  
         ygrid = (centrey) // tilesize
 
         #pathfinding logic
         if (self.targetx == xgrid * tilesize) and (self.targety == ygrid * tilesize):
-            start = grid.node(ygrid - 1, xgrid - 1)
+            start = grid.node(ygrid , xgrid )
             end = grid.node((PC.rect.y) //  tilesize, (PC.rect.x) // tilesize)
             path, runs = finder.find_path(start, end, grid)
             grid.cleanup()
@@ -155,6 +201,8 @@ class enemy(pygame.sprite.Sprite):
                 oneblock = True
             else:
                 oneblock = False
+                #print('operations:', runs, 'path length:', len(path))
+                #print(grid.grid_str(path=path, start=start, end=end))
                 self.targetx = (int(path[1][1]) * tilesize )
                 self.targety = (int(path[1][0]) * tilesize )
         else:
@@ -180,6 +228,8 @@ class enemy(pygame.sprite.Sprite):
 all_sprites_list = pygame.sprite.Group()
 wall_list = pygame.sprite.Group()
 enemy_list = pygame.sprite.Group()
+key_list = pygame.sprite.Group()
+back_sprites_list = pygame.sprite.Group()
         
 
 # -- Exit game flag set to false
@@ -191,15 +241,18 @@ clock = pygame.time.Clock()
 ## --== instantiates the map
 for y in range(maxsizey):
     for x in range (maxsizex):
+        if (map[y][x] == " ") or (map[y][x] == "e"):
+            new_wall = background(RED, 1, 1, x*tilesize, y *tilesize)
+            back_sprites_list.add(new_wall)
         if map[y][x] == "%":
             new_wall = outerwall((200,30,30), 1, 1, x*tilesize, y *tilesize)
             wall_list.add(new_wall)
             all_sprites_list.add(new_wall)
-        if map[y][x] == "#":
+        elif map[y][x] == "#":
             new_wall = innerwall(RED, 1, 1, x*tilesize, y *tilesize)
             wall_list.add(new_wall)
             all_sprites_list.add(new_wall)
-        if map[y][x] == "e":
+        elif map[y][x] == "e":
             new_enemy = enemy(GREEN, 1, 1, x*tilesize, y *tilesize)
             enemy_list.add(new_enemy)
             all_sprites_list.add(new_enemy)
@@ -236,15 +289,27 @@ while not done:
         PC.rect.x = PC_oldX
         PC.rect.y = PC_oldY
 
+    player_collide_list = pygame.sprite.spritecollide(PC, enemy_list, False)
+    for foo in player_collide_list:
+        PC.health -= random.randrange(0,foo.attack)
+        foo.health -= random.randrange(0,PC.attack)
+
+    
+
+    player_collide_list = pygame.sprite.spritecollide(PC, key_list, True)
+    for foo in player_collide_list:
+        PC.money += 1
+
     # -- screen background is WHITE
 
     screen.fill(WHITE)
 
     # -- Draw here
+    back_sprites_list.draw(screen)
     all_sprites_list.draw(screen)
     all_sprites_list.update()
     text = font.render(" | HP: " + str(PC.health) \
-                           + " | Money: " + str(PC.money) + " | Score: " \
+                           + " | Keys: " + str(PC.money) + " | Score: " \
                        + str(PC.score) + " | ", True, BLACK)
     textRect = text.get_rect()
     textRect.center = ((maxsizex * tilesize) // 2,\
