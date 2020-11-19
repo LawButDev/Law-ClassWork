@@ -386,7 +386,7 @@ def main():
             global highscore
             if highscore <= hero.score:
                 highscore = hero.score
-                maindone = True
+            maindone = True
         # -- user input and controls
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
