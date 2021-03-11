@@ -3,7 +3,7 @@ import math
 # -- global constants
 map = open("map.txt","r")
 
-mapsizex = 7
+mapsizex = 11
 mapsizey= 7
 savedmap = []
 for line in range(mapsizey):
@@ -11,7 +11,7 @@ for line in range(mapsizey):
 map.seek(0)
 unit = 64
 pmm = 1/16
-mossen = 0.25
+mossen = -0.25
 planewidth = 320
 walldist = []
 res = 3
@@ -33,9 +33,6 @@ YELLOW = (255,255,0)
 # -- initialise PyGame
 pygame.init()
 
-# -- sprite loading
-fwall=pygame.image.load('factory-wall.png').convert()
-
 # -- Blank Screen
 size = (640,640)
 screen = pygame.display.set_mode(size)
@@ -48,6 +45,10 @@ pygame.display.set_caption("Psuedo 3D")
 debug_list = pygame.sprite.Group()
 debug_wallcol = pygame.sprite.Group()
 
+# -- sprite loading
+fwall=pygame.image.load('factory-wall.png').convert()
+fwallcomp = pygame.image.load('factory-wall-disp.png').convert()
+
 # -- class definitions
 class debugsquare(pygame.sprite.Sprite):
     def __init__(self,x_ref,y_ref):
@@ -58,6 +59,7 @@ class debugsquare(pygame.sprite.Sprite):
         self.rect.y = y_ref
         self.rect.x = x_ref
         self.selected = False
+        self.sprite = fwall
     def update(self):
         if self.selected:
             self.image.fill((30,150,255,100))
@@ -115,6 +117,9 @@ class player(pygame.sprite.Sprite):
             mindis = 100000
             colx = xdif + self.rect.center[0]
             coly = ydif + self.rect.center[1]
+
+            sprite = fwall
+            corsprite = fwall
             
             for col in debug_wallcol:
                 clippedline = col.rect.clipline((self.rect.center[0],self.rect.center[1]),(self.rect.center[0] + xdif , self.rect.center[1] + ydif))
@@ -126,6 +131,19 @@ class player(pygame.sprite.Sprite):
                         colx = start[0]
                         coly = start[1]
                         mindis = dist
+                        sprite = col.sprite
+                        loc = -1
+                        if ((start[0] == col.rect.left) or (start[0] == col.rect.right)) and ((start[1] == col.rect.top) or (start[1] == col.rect.bottom)):
+                            loc = 0
+                        elif ((start[0] == col.rect.left) or (start[0] == col.rect.right - 1)):
+                            loc = abs(int(start[1]-col.rect.top))
+                        elif ((start[1] == col.rect.top) or (start[1] == col.rect.bottom - 1)):
+                            loc = abs(int(start[0]-col.rect.left))
+                        else:
+                            loc = 32
+                        
+                        corsprite = pygame.Surface.subsurface(sprite, (loc, 0, 1, 64))
+                        
             #angle correction to reduce distortion
             corang = f*rayang - 30
             dist = math.sqrt((abs(self.rect.center[0]-colx))**2 + (self.rect.center[1]-coly)**2)
@@ -137,8 +155,20 @@ class player(pygame.sprite.Sprite):
 
             #debug basic render of view using lines (needs to be rewritten to sprite) - since the porj plane must be doubled in size the height is doubled and x coord is doubled
             #distance colour change is to make it easier to see depth, by making it darker
-            dcc = max(255-cordist // 2, 10)
-            pygame.draw.line(screen,(dcc // 6,dcc//3,dcc // 1,175),(2*f,1*(size[1]//2 - projheight // 1)),(2*f,1*(size[1]//2 + projheight // 1)),2)
+            dcc = max((255-((cordist)//3)**1), 10)
+
+            #in order to get an image rendering properly, it must first be scaled, then a one pixel wide slice of the sprite must be displayed
+            dispsprite = pygame.transform.scale(corsprite,(2,int(projheight)*2))
+            cont_rect = pygame.Rect((0,0),(2, int(projheight)*2))
+
+            screen.blit(dispsprite,(2*f,1*(size[1]//2-projheight//1)),cont_rect)
+
+            #adds an overlay of darkness to amke depth easier to make out
+            overlayline = pygame.Surface((2,int(projheight * 2)),pygame.SRCALPHA)
+            overlayline.fill((0,0,0,255-dcc))
+            screen.blit(overlayline,(2*f,1*(size[1]//2-projheight//1)))
+            
+            #pygame.draw.line(screen,(dcc // 6,dcc//3,dcc // 1,175),(2*f,1*(size[1]//2 - projheight // 1)),(2*f,1*(size[1]//2 + projheight // 1)),2)
             
 ####            #debug rendering of view cone - should be disabled once done
 ####            pygame.draw.line(screen, (255,255,10,0), (self.rect.center),(colx, coly),1)
@@ -218,6 +248,13 @@ for y in range (mapsizey):
             test = debugsquare(int(y)*unit,int(x) * unit)
             debug_list.add(test)
             debug_wallcol.add(test)
+            test.sprite = fwall
+        if ystr[x] == "c":
+            test = debugsquare(int(y)*unit,int(x) * unit)
+            debug_list.add(test)
+            debug_wallcol.add(test)
+            test.sprite = fwallcomp
+
 
 PC = player(size[1]//2 + 30, size[0]//2 + 30)
 debug_list.add(PC)
