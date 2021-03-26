@@ -1,5 +1,6 @@
 import pygame
 import math
+import socket
 # -- global constants
 map = open("map.txt","r")
 
@@ -63,6 +64,31 @@ bulspr = pygame.image.load('shitbullet.png')
 
 # -- class definitions
 
+# - networking class
+class Network:
+    def __init__(self,ip):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server = ip
+        self.port = 5555
+        self.addr = (self.server, self.port)
+        self.id = self.connect()
+        print(self.id)
+
+    def connect(self):
+        try:
+            self.client.connect(self.addr)
+            return self.client.recv(2048).decode()
+        except:
+            pass
+
+    def send(self, data):
+        try:
+            self.client.send(str.encode(data))
+            return self.client.recv(2048).decode()
+        except socket.error as e:
+            print(e)
+                             
+
 ## -- map + sprite renderring classes
 class debugsquare(pygame.sprite.Sprite):
     def __init__(self,x_ref,y_ref):
@@ -88,6 +114,9 @@ class ent(pygame.sprite.Sprite):
         self.checkedthisframe = False
         self.firstray = 0
         self.firstdist = 0
+        
+        self.spritecentdist = math.sqrt((abs(PC.rect.center[0]-self.rect.center[0]))**2 + (abs(PC.rect.center[1]-self.rect.center[1]))**2)
+        self.spritecentang = math.degrees((math.atan2((PC.rect.center[1]-self.rect.center[1]),(PC.rect.center[0]-self.rect.center[0])))%(2*math.pi))
     def  update(self):
         self.spritecentdist = math.sqrt((abs(PC.rect.center[0]-self.rect.center[0]))**2 + (abs(PC.rect.center[1]-self.rect.center[1]))**2)
         self.spritecentang = math.degrees((math.atan2((PC.rect.center[1]-self.rect.center[1]),(PC.rect.center[0]-self.rect.center[0])))%(2*math.pi))
@@ -405,6 +434,13 @@ for y in range (mapsizey):
             debug_wallcol.add(test)
             test.sprite = fwallcomp
             debug_raycol.add(test)
+
+gotip = False
+while not gotip:
+    print("please enter the ip of the server in form ##.#.#.##")
+    ip = input()
+    gotip = True
+    interface = Network(ip)
 
 
 PC = player(unit * 4, unit*5)
