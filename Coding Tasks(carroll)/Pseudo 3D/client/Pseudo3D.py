@@ -1,6 +1,7 @@
 import pygame
 import math
 import socket
+from network import Network
 # -- global constants
 map = open("map.txt","r")
 
@@ -19,7 +20,11 @@ res = 3
 raylength = 10
 debugmode = False
 
+rawspawnpoint = ""
+rawmapsize = ()
+
 Playername = "pogman"
+clientnumber = 0
 
 for f in range(planewidth):
     tempgridthing = [100000,10000,10000]
@@ -62,31 +67,26 @@ arrow = (pygame.image.load('arrowf.png'),pygame.image.load('arrowr.png'),pygame.
 sp = pygame.image.load('spawnpost.png')
 bulspr = pygame.image.load('shitbullet.png')
 
+# -- subroutine definitions
+
+### - only used once so not put in a class, handles the initial unpacking of the map and 
+def initialunpack(strog):
+    global rawmapsize
+    global rawspawnpoint
+    global rawmap
+    print(strog)
+    strog = strog.split("/")
+    rawmapsize = strog[0]
+    rawspawnpoint = strog[1]
+    rawmap = strog [2]
+    rawmapsize = rawmapsize.split(" ")
+    rawmapsize = (int(rawmapsize[0]),int(rawmapsize[1]))
+
+
+
 # -- class definitions
 
-# - networking class
-class Network:
-    def __init__(self,ip):
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server = ip
-        self.port = 5555
-        self.addr = (self.server, self.port)
-        self.id = self.connect()
-        print(self.id)
-
-    def connect(self):
-        try:
-            self.client.connect(self.addr)
-            return self.client.recv(2048).decode()
-        except:
-            pass
-
-    def send(self, data):
-        try:
-            self.client.send(str.encode(data))
-            return self.client.recv(2048).decode()
-        except socket.error as e:
-            print(e)
+# - networking class - deprecated because i moved it to a separate file
                              
 
 ## -- map + sprite renderring classes
@@ -296,7 +296,7 @@ class player(pygame.sprite.Sprite):
                                 if (i%90 <= col.spritecentang%90):
                                     spriteloc = int(col.x_size//2 - relspritedist) 
                                 elif (i%90 > col.spritecentang%90):
-                                    spriteloc = int((col.x_size)//2 + relspritedist) 
+                                    spriteloc = int(col.x_size//2 + relspritedist) 
                             else:
                                 sprite = sp
                                 #dist = 100000000
@@ -406,7 +406,6 @@ class player(pygame.sprite.Sprite):
         oldx = self.rect.x
         
         self.rect.x += self.xdif
-
         
         oldy = self.rect.y
         
@@ -419,8 +418,24 @@ class player(pygame.sprite.Sprite):
             self.rect.x = oldx
 
 
+gotip = False
+while not gotip:
+    print("please enter the ip of the server in form ##.#.#.##")
+    ip = input()
+    gotip = True
+    interface = Network(ip)
+    initialunpack(interface.id)
+
+
+mapsizex = int(rawmapsize[0])
+mapsizey = int(rawmapsize[1])
+
+print(mapsizex,mapsizey)
+
+
+map = rawmap.split("\n")
 for y in range (mapsizey):
-    ystr = map.readline()
+    ystr = map[y]
     for x in range (mapsizex):
         if ystr[x] == "#":
             test = debugsquare(int(y)*unit,int(x) * unit)
@@ -435,15 +450,10 @@ for y in range (mapsizey):
             test.sprite = fwallcomp
             debug_raycol.add(test)
 
-gotip = False
-while not gotip:
-    print("please enter the ip of the server in form ##.#.#.##")
-    ip = input()
-    gotip = True
-    interface = Network(ip)
 
-
-PC = player(unit * 4, unit*5)
+print(rawspawnpoint)
+spawnpoint = rawspawnpoint.split(" ")
+PC = player(unit * int(spawnpoint[1]), unit*int(spawnpoint[0]))
 debug_list.add(PC)
 
 # - temporary sprite setup to test drawing logic
@@ -452,10 +462,10 @@ debug_list.add(testsprite)
 debug_entlist.add(testsprite)
 debug_raycol.add(testsprite)
 
-testrotsprite = rotent(4.5*unit,4.5*unit,unit // 2, unit, arrow, 0)
-debug_list.add(testrotsprite)
-debug_entlist.add(testrotsprite)
-debug_raycol.add(testrotsprite)
+testsprite = rotent(3.5*unit,3.5*unit,unit // 2, unit, arrow, 0)
+debug_list.add(testsprite)
+debug_entlist.add(testsprite)
+debug_raycol.add(testsprite)
 
 gun = pistol()
 debug_list.add(gun)
