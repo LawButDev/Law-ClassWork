@@ -56,6 +56,7 @@ debug_wallcol = pygame.sprite.Group()
 debug_entlist = pygame.sprite.Group()
 debug_raycol = pygame.sprite.Group()
 debug_bullet = pygame.sprite.Group()
+debug_masked = pygame.sprite.Group()
 
 # -- sprite loading
 fwall=pygame.image.load('factory-wall.png').convert()
@@ -74,13 +75,22 @@ def initialunpack(strog):
     global rawmapsize
     global rawspawnpoint
     global rawmap
-    print(strog)
     strog = strog.split("/")
     rawmapsize = strog[0]
     rawspawnpoint = strog[1]
     rawmap = strog [2]
     rawmapsize = rawmapsize.split(" ")
     rawmapsize = (int(rawmapsize[0]),int(rawmapsize[1]))
+
+
+# - corrects an angle to be back into the desired 0-360 range
+def anglecor(ang):
+    if ang <= 0:
+        return(ang + 360)
+    elif ang > 360:
+        return(ang - 360)
+    else:
+        return(ang)
 
 
 
@@ -95,6 +105,7 @@ class debugsquare(pygame.sprite.Sprite):
         super().__init__()
         self.type = "block"
         self.image = pygame.Surface((unit,unit),pygame.SRCALPHA)
+        self.image.fill((100,200,100,255))
         self.rect = self.image.get_rect()
         self.rect.y = y_ref
         self.rect.x = x_ref
@@ -106,7 +117,7 @@ class ent(pygame.sprite.Sprite):
         super().__init__()
         self.type = "sprite"
         self.image = pygame.Surface((x_size,x_size),pygame.SRCALPHA)
-        self.image.fill((70,150,200,100))
+        self.image.fill((70,150,200,255))
         self.x_size = x_size
         self.sprite = sprite
         self.rect = self.image.get_rect()
@@ -142,6 +153,13 @@ class rotent(ent):
             self.sprite = self.sprites[0]
         elif (self.relativerot >= 270) and (self.relativerot < 360):
             self.sprite = self.sprites[3]
+
+class player(rotent):
+    def __init__(self,x_ref,y_ref,x_size,y_size,sprites,rot,player):
+        super().__init__(self,x_ref,y_ref,x_size,y_size,sprites,rot)
+        self.player = player
+    def update(self):
+        super().update()
 
 class bullet(ent):
     def __init__(self,x_ref,y_ref,x_size,sprite,owner,damage,bmm,ang):
@@ -246,10 +264,36 @@ class player(pygame.sprite.Sprite):
             #ceilling render
             pygame.draw.rect(screen,(0,0,100,255),(0,0,size[0], size[1] // 2),0)
 
+        else:
+            debug_raycol.draw(screen)
+
+        # to attempt to solve the lag caused by checking every object for every ray every frame im attempting to use a mask to only check the blocks that are in the players fov
+        masksurf = pygame.Surface([mapsizex*unit,mapsizey*unit],pygame.SRCALPHA)
+        maskrect = masksurf.get_rect()
+        #draws a triangle represent the viewcone        
+        hypot = raylength * unit * 5
+        calcrot = anglecor(self.rot - 30)
+        xdif = math.cos(math.radians(calcrot)) * hypot
+        ydif = math.sin(math.radians(calcrot)) * hypot
+        calcrot = anglecor(self.rot + 30)
+        xdif2 = math.cos(math.radians(calcrot)) * hypot
+        ydif2 = math.sin(math.radians(calcrot)) * hypot
+        
+        pygame.draw.polygon(masksurf, (100,0,0,200), [(self.rect.center[0], self.rect.center[1]),(self.rect.center[0] + xdif, self.rect.center[1] + ydif),(self.rect.center[0] + xdif2, self.rect.center[1] + ydif2)],0)
+
+        viewMask = pygame.mask.from_surface(masksurf)
+        
+        debug_masked.empty()
+        
+        for col in debug_raycol:
+          #  if (pygame.sprite.collide_mask(self, col) != None): ### --- its not running because this check is failing, meaning the culled mask isn't working
+            if not(viewMask.overlap(pygame.mask.from_surface(col.image),(col.rect.x,col.rect.y)) is None):
+                debug_masked.add(col)
+            #screen.blit(pygame.mask.from_surface(col.image).to_surface(),(col.rect.x,col.rect.y))
+                
+        
         for f in range(planewidth):
-            i = (f*rayang) + self.rot - 30
-            if (i <= 0): i += 360
-            if (i > 360): i -= 360
+            i = anglecor((f*rayang) + self.rot - 30)
             hypot = raylength * unit
             xdif = math.cos(math.radians(i)) * hypot
             ydif = math.sin(math.radians(i)) * hypot
@@ -265,11 +309,9 @@ class player(pygame.sprite.Sprite):
             spritecolx = xdif + self.rect.center[0]
             spritecoly = ydif + self.rect.center[1]
             
-            for col in debug_raycol:
+            for col in debug_masked:
                 if col.type == "sprite":
-                    spriterot = self.rot - 90
-                    if spriterot >= 360: spriterot -= 360
-                    elif spriterot < 0: spriterot += 360
+                    spriterot = anglecor(self.rot - 90)
                     
                     #concept of sprite / ray collisions is that the pixels are only one wide, therefor for every ray cast onto a sprite only the width of the sprite (i.e) 16 points must
                     # checked, therefore if we know the equation of each line in y=mx+c we can loop through the 16 points on the sprite line and see if the two lines intersect
@@ -432,6 +474,10 @@ mapsizey = int(rawmapsize[1])
 
 print(mapsizex,mapsizey)
 
+#print(rawspawnpoint)
+spawnpoint = rawspawnpoint.split(" ")
+PC = player(unit * int(spawnpoint[1]), unit*int(spawnpoint[0]))
+debug_list.add(PC)
 
 map = rawmap.split("\n")
 for y in range (mapsizey):
@@ -449,23 +495,14 @@ for y in range (mapsizey):
             debug_wallcol.add(test)
             test.sprite = fwallcomp
             debug_raycol.add(test)
+        if ystr[x] == "s":
+            spawnpoint = ent(int(y*unit) + unit//2, int(x*unit) + unit//2, unit//2,unit//2, sp)
+            debug_list.add(spawnpoint)
+            debug_raycol.add(spawnpoint)
 
 
-print(rawspawnpoint)
-spawnpoint = rawspawnpoint.split(" ")
-PC = player(unit * int(spawnpoint[1]), unit*int(spawnpoint[0]))
-debug_list.add(PC)
 
-# - temporary sprite setup to test drawing logic
-testsprite = ent(2.5*unit,2.5*unit,unit // 2, unit, sp)
-debug_list.add(testsprite)
-debug_entlist.add(testsprite)
-debug_raycol.add(testsprite)
 
-testsprite = rotent(3.5*unit,3.5*unit,unit // 2, unit, arrow, 0)
-debug_list.add(testsprite)
-debug_entlist.add(testsprite)
-debug_raycol.add(testsprite)
 
 gun = pistol()
 debug_list.add(gun)

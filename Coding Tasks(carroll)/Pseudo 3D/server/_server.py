@@ -7,7 +7,7 @@ import random
 #the ipv4 adress must then be copied from that and put below
 
 #put the ipv4 address here
-server = "10.0.5.159"
+server = "192.168.0.167"
 #port is the standart port 5555 for simplicity
 port = 5555
 rawmap = open("map.txt","r")
@@ -46,15 +46,18 @@ except socket.error as e:
 s.listen(2)
 print("waiting for a connection, server started")
 
+def test():
+    print("yeet")
+
 def read_pos(str):
     str = str.split(",")
     return int(str[0]),int(str[1])
 
 def make_pos(tup):
-    return str(tup[0]) + "," + str(tup[1])
+    return (str(playercount) + "|" + str(tup[0]) + "," + str(tup[1]))
 
 def initialpack():
-    return (str(mapsize[0]) + " " + str(mapsize[1]) + "/" + spawnpoints[random.randint(0,spawncount)] + "/" + mapstr)
+    return (str(mapsize[0]) + " " + str(mapsize[1]) + "/" + spawnpoints[random.randint(0,spawncount) - 1] + "/" + mapstr)
 
 test = initialpack()
 
@@ -86,6 +89,7 @@ def threaded_client(conn, player):
     conn.close()
 
 currentPlayer = 0
+playercount = 0
 
 while True:
     conn, addr = s.accept()
@@ -93,3 +97,4 @@ while True:
 
     start_new_thread(threaded_client, (conn,currentPlayer))
     currentPlayer += 1
+    playercount += 1
