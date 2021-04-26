@@ -131,6 +131,16 @@ class ent(pygame.sprite.Sprite):
     def  update(self):
         self.spritecentdist = math.sqrt((abs(PC.rect.center[0]-self.rect.center[0]))**2 + (abs(PC.rect.center[1]-self.rect.center[1]))**2)
         self.spritecentang = math.degrees((math.atan2((PC.rect.center[1]-self.rect.center[1]),(PC.rect.center[0]-self.rect.center[0])))%(2*math.pi))
+    def angcompare(self,num1,num2):
+        num1div = num1 // 90
+        num1rem = num1 % 90
+        num2div = num2 // 90
+        num2rem = num2 % 90
+        if num1div >= 3: num1div = 0
+        if num1div <= num2div and num1rem <= num2rem:
+            return True
+        else:
+            return False
 
 class rotent(ent):
     def __init__(self,x_ref,y_ref,x_size,y_size,sprites,rot):
@@ -154,7 +164,7 @@ class rotent(ent):
         elif (self.relativerot >= 270) and (self.relativerot < 360):
             self.sprite = self.sprites[3]
 
-class player(rotent):
+class enemy(rotent):
     def __init__(self,x_ref,y_ref,x_size,y_size,sprites,rot,player):
         super().__init__(self,x_ref,y_ref,x_size,y_size,sprites,rot)
         self.player = player
@@ -225,10 +235,11 @@ class pistol(gun):
 class player(pygame.sprite.Sprite):
     def __init__(self,x_ref,y_ref):
         super().__init__()
-        self.image = pygame.Surface([size[0] // 20,size[1] // 20],pygame.SRCALPHA)
+        self.image = pygame.Surface([int(unit * 3/4),int(unit * 3/4)],pygame.SRCALPHA)
         self.rect = self.image.get_rect()
         #self.image.fill((150,150,200,100))
-        pygame.draw.polygon(self.image, (150,150,200,100), ((self.rect.center[0],self.rect.top),(self.rect.left,self.rect.bottom),(self.rect.right,self.rect.bottom)))           
+        #pygame.draw.polygon(self.image, (150,150,200,100), ((self.rect.center[0],self.rect.top),(self.rect.left,self.rect.bottom),(self.rect.right,self.rect.bottom)))           
+        pygame.draw.circle(self.image, (150,150,200,250), (self.rect.center), int(unit * 3/4) // 2,0)
         self.rect.y = y_ref
         self.rect.x = x_ref
         self.dirx = 0
@@ -252,7 +263,7 @@ class player(pygame.sprite.Sprite):
         while self.rot < 0:
             self.rot = self.rot + 360
         #self.rotation_direction.y = float(delta_y)
-        self.image = pygame.transform.rotate(self.orgimage, -self.rot - 90)
+        #self.image = pygame.transform.rotate(self.orgimage, -self.rot - 90)
         self.dirx = 0
         self.diry = 0
 
@@ -271,7 +282,7 @@ class player(pygame.sprite.Sprite):
         masksurf = pygame.Surface([mapsizex*unit,mapsizey*unit],pygame.SRCALPHA)
         maskrect = masksurf.get_rect()
         #draws a triangle represent the viewcone        
-        hypot = raylength * unit * 5
+        hypot = raylength * unit * 1
         calcrot = anglecor(self.rot - 30)
         xdif = math.cos(math.radians(calcrot)) * hypot
         ydif = math.sin(math.radians(calcrot)) * hypot
@@ -332,16 +343,23 @@ class player(pygame.sprite.Sprite):
                             spriteloc = 0
 
                             #concept of new sprite render is to find the length of the line between the ray and the centre of the sprite, and if it is within the sprite boudnary working from there
-                            relspritedist = ((math.tan(math.radians(abs(i % 90 - col.spritecentang%90)))*col.spritecentdist))
+                            #this line finds the distance between the angles for later calculation
+                            angdif = abs(i - col.spritecentang) % 360
+                            #since the difference can be maximum 1
+                            if angdif >= 180 : angdif = 360 - angdif
+                            #relspritedist = ((math.tan(math.radians(abs(i % 90 - col.spritecentang%90)))*col.spritecentdist))
+                            relspritedist = abs((math.tan(math.radians(abs(angdif)))*col.spritecentdist))
                             if relspritedist < 0: relspritedist = 0
                             if relspritedist <= col.x_size // 2:
-                                if (i%90 <= col.spritecentang%90):
+                                #if (i%90 <= col.spritecentang%90):
+                                if col.angcompare(i,col.spritecentang):  
                                     spriteloc = int(col.x_size//2 - relspritedist) 
-                                elif (i%90 > col.spritecentang%90):
+                                #elif (i%90 > col.spritecentang%90):
+                                else:
                                     spriteloc = int(col.x_size//2 + relspritedist) 
                             else:
                                 sprite = sp
-                                #dist = 100000000
+                                
                             spritedist = col.spritecentdist
     
                             spritecorsprite = pygame.Surface.subsurface(sprite, (spriteloc, 0, 1, 64))
@@ -381,9 +399,11 @@ class player(pygame.sprite.Sprite):
 
             #wall height calc based on distance to proj plane (projdist)
             projheight = (unit / cordist) * projdist
+            if projheight >= size[1]: projheight = size [1]
 
             #sprite height calc based on distance to proj plane(porjdist)
             spriteprojheight = (unit/spritecordist)*projdist
+            if spriteprojheight >= size[1] : spriteprojdist = size[1]
 
             #debug basic render of view using lines (needs to be rewritten to sprite) - since the porj plane must be doubled in size the height is doubled and x coord is doubled
             #distance colour change is to make it easier to see depth, by making it darker
@@ -447,17 +467,51 @@ class player(pygame.sprite.Sprite):
 
         oldx = self.rect.x
         
-        self.rect.x += self.xdif
+        #self.rect.x += self.xdif
         
         oldy = self.rect.y
-        
-        self.rect.y += self.ydif
 
+        coll_group = pygame.sprite.Group()
+        coll_group.empty()
+        
+        #self.rect.y += self.ydif
+        for foo in debug_wallcol:
+            if pygame.mask.from_surface(self.image).overlap(pygame.mask.from_surface(foo.image),(int((self.rect.x + self.xdif) - foo.rect.x),int((self.rect.y + self.ydif) - foo.rect.y))) is not None:
+                coll_group.add(foo)
+        if len(coll_group) != 0:
+            xcolld = False
+            ycolld = False
+            for foo in coll_group:
+                if pygame.mask.from_surface(self.image).overlap(pygame.mask.from_surface(foo.image),(int((self.rect.x + self.xdif) - foo.rect.x),int((self.rect.y) - foo.rect.y))) is not None:
+                    xcolld = True
+                if pygame.mask.from_surface(self.image).overlap(pygame.mask.from_surface(foo.image),(int((self.rect.x) - foo.rect.x),int((self.rect.y + self.ydif) - foo.rect.y))) is not None:
+                    ycolld = True
+            if not xcolld:
+                self.rect.x += self.xdif
+            if not ycolld:
+                self.rect.y += self.ydif
+        else:
+            self.rect.x += self.xdif
+            self.rect.y += self.ydif
+            
         player_collide_list = pygame.sprite.spritecollide(self, debug_wallcol, False)
 
         for foo in player_collide_list:
-            self.rect.y = oldy
-            self.rect.x = oldx
+            if self.rect.x <= foo.rect.x:
+                if self.rect.right > foo.rect.left:
+                    self.rect.x -= 1
+            else:
+                if self.rect.left < foo.rect.right:
+                    self.rect.x += 1
+            #self.rect.y = oldy
+            if self.rect.y <= foo.rect.y:
+                if self.rect.bottom > foo.rect.top:
+                    self.rect.y += 1
+            else:
+                if self.rect.top < foo.rect.bottom:
+                    self.rect.y -= 1
+
+            #self.rect.x = oldx
 
 
 gotip = False
