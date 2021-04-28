@@ -19,6 +19,7 @@ walldist = []
 res = 3
 raylength = 10
 debugmode = False
+maxsizemult = 4
 
 rawspawnpoint = ""
 rawmapsize = ()
@@ -59,14 +60,14 @@ debug_bullet = pygame.sprite.Group()
 debug_masked = pygame.sprite.Group()
 
 # -- sprite loading
-fwall=pygame.image.load('factory-wall.png').convert()
-fwallcomp = pygame.image.load('factory-wall-disp.png').convert()
+fwall=pygame.image.load('sprites/factory-wall.png').convert()
+fwallcomp = pygame.image.load('sprites/factory-wall-disp.png').convert()
 
 #multi face sprites should be in the standard form front, right, back, left, to make renderring easier
-arrow = (pygame.image.load('arrowf.png'),pygame.image.load('arrowr.png'),pygame.image.load('arrowb.png'),pygame.image.load('arrowl.png'))
+arrow = (pygame.image.load('sprites/arrowf.png'),pygame.image.load('sprites/arrowr.png'),pygame.image.load('sprites/arrowb.png'),pygame.image.load('sprites/arrowl.png'))
 
-sp = pygame.image.load('spawnpost.png')
-bulspr = pygame.image.load('shitbullet.png')
+sp = pygame.image.load('sprites/spawnpost.png')
+bulspr = pygame.image.load('sprites/shitbullet.png')
 
 # -- subroutine definitions
 
@@ -319,6 +320,8 @@ class player(pygame.sprite.Sprite):
             spritedist = 100000000000
             spritecolx = xdif + self.rect.center[0]
             spritecoly = ydif + self.rect.center[1]
+
+            spriteord = []
             
             for col in debug_masked:
                 if col.type == "sprite":
@@ -334,7 +337,7 @@ class player(pygame.sprite.Sprite):
                         #print("y = " + str(m) + "x + " + str(c))
                         start,end = clippedline
                         #pygame.draw.line(screen, (255,255,10,175), (start),(end),2)
-                        dist = math.sqrt(((self.rect.center[0]-start[0]))**2 + (self.rect.center[1]-start[1])**2)
+                        dist = math.sqrt(((self.rect.center[0]-start[0]))**2 + (self.rect.center[1]-start[1])**2)                        
 
                         #print(spritecentang,self.rot%90)
                         if dist < spritedist: # and dist < col.x_size:
@@ -363,6 +366,8 @@ class player(pygame.sprite.Sprite):
                             spritedist = col.spritecentdist
     
                             spritecorsprite = pygame.Surface.subsurface(sprite, (spriteloc, 0, 1, 64))
+
+                            spriteord.append((spritedist,spritecorsprite))
                             
                 if col.type == "block":
                     clippedline = col.rect.clipline((self.rect.center[0],self.rect.center[1]),(self.rect.center[0] + xdif , self.rect.center[1] + ydif))
@@ -386,6 +391,32 @@ class player(pygame.sprite.Sprite):
                                 loc = 32
                             
                             corsprite = pygame.Surface.subsurface(sprite, (loc, 0, 1, 64))
+
+            # - sorts the sprite list so that it is from back to front cos otherwise it fucking breaks lol
+            j = 0
+            sortedsprite = []
+            
+            if len(spriteord) < 1:                
+                j = 100
+            else:                
+                sortedsprite.append((spriteord[0][0],spriteord[0][1]))
+            while j <= len(spriteord) - 1:
+                stored = spriteord[j][0]
+                inserted = False
+                k = len(sortedsprite) - 1
+                sortedsprite.append((9999,2333))
+                while not inserted:
+                    if k >= 0:
+                        if stored > sortedsprite[k][0]:
+                            sortedsprite[k+1] = (sortedsprite[k][0],sortedsprite[k][1])
+                            #sortedsprite[k] = (spriteord,0)
+                            k -= 1
+                        else:
+                            sortedsprite[k+1] = (spriteord[j][0],spriteord[j][1])
+                            inserted = True
+                    else: inserted = True
+                        
+                j += 1
                         
             #angle correction to reduce distortion
             corang = f*rayang - 30
@@ -393,17 +424,11 @@ class player(pygame.sprite.Sprite):
             cordist = math.cos(math.radians(corang))*dist
             if cordist == 0: cordist += 0.000001
 
-            spritecordist = spritedist
-            spritecordist = math.cos(math.radians(corang))* spritedist
-            if spritecordist == 0: spritecordist += 0.000001
-
             #wall height calc based on distance to proj plane (projdist)
             projheight = (unit / cordist) * projdist
-            if projheight >= size[1]: projheight = size [1]
+            if projheight >= size[1]*maxsizemult: projheight = size [1] * maxsizemult
 
-            #sprite height calc based on distance to proj plane(porjdist)
-            spriteprojheight = (unit/spritecordist)*projdist
-            if spriteprojheight >= size[1] : spriteprojdist = size[1]
+            
 
             #debug basic render of view using lines (needs to be rewritten to sprite) - since the porj plane must be doubled in size the height is doubled and x coord is doubled
             #distance colour change is to make it easier to see depth, by making it darker
@@ -412,9 +437,7 @@ class player(pygame.sprite.Sprite):
             #in order to get an image rendering properly, it must first be scaled, then a one pixel wide slice of the sprite must be displayed
             dispsprite = pygame.transform.scale(corsprite,(2,int(projheight)*2))
             cont_rect = pygame.Rect((0,0),(2, int(projheight)*2))
-
-            spritedispsprite = pygame.transform.scale(spritecorsprite,(2,int(spriteprojheight)*2))
-            spritecont_rect = pygame.Rect((0,0),(2, int(spriteprojheight)*2))
+     
             
             if not(debugmode):
                 screen.blit(dispsprite,(2*f,1*(size[1]//2-projheight//1)),cont_rect)
@@ -423,8 +446,25 @@ class player(pygame.sprite.Sprite):
             overlayline = pygame.Surface((2,int(projheight * 2)),pygame.SRCALPHA)
             overlayline.fill((0,0,0,255-dcc))
             screen.blit(overlayline,(2*f,1*(size[1]//2-projheight//1)))
-            if spritedist < cordist:
-                screen.blit(spritedispsprite,(2*f,1*(size[1]//2-spriteprojheight//1)),spritecont_rect)
+
+            i = 0
+            while i < len(sortedsprite):
+                spritedist = sortedsprite[i][0]
+                spritecorsprite = sortedsprite[i][1]
+                spritecordist = spritedist
+                spritecordist = math.cos(math.radians(corang))* spritedist
+                if spritecordist == 0: spritecordist += 0.000001
+
+                #sprite height calc based on distance to proj plane(porjdist)
+                spriteprojheight = (unit/spritecordist)*projdist
+                if spriteprojheight >= size[1] * maxsizemult : spriteprojheight = size[1] * maxsizemult
+
+                spritedispsprite = pygame.transform.scale(spritecorsprite,(2,int(spriteprojheight)*2))
+                spritecont_rect = pygame.Rect((0,0),(2, int(spriteprojheight)*2))
+                
+                if spritedist < cordist:
+                    screen.blit(spritedispsprite,(2*f,1*(size[1]//2-spriteprojheight//1)),spritecont_rect)
+                i += 1
 
             
             #pygame.draw.line(screen,(dcc // 6,dcc//3,dcc // 1,175),(2*f,1*(size[1]//2 - projheight // 1)),(2*f,1*(size[1]//2 + projheight // 1)),2)
@@ -447,8 +487,8 @@ class player(pygame.sprite.Sprite):
             self.ydif -= y_move     
 
         #standard movement angle correction calc
-        x_move = math.cos(math.radians(self.rot)) * (unit * pmm)
-        y_move = math.sin(math.radians(self.rot)) * (unit * pmm)
+        x_move = int(math.cos(math.radians(self.rot)) * (unit * pmm))
+        y_move = int(math.sin(math.radians(self.rot)) * (unit * pmm))
         
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP] or keys[pygame.K_w]:
@@ -488,30 +528,50 @@ class player(pygame.sprite.Sprite):
                     ycolld = True
             if not xcolld:
                 self.rect.x += self.xdif
+            else:
+                for foo in coll_group:
+                    if foo.rect.center[0] > self.rect.center[0]:
+                        line = foo.rect.clipline((self.rect.x,self.rect.y),((self.rect.x + self.xdif),self.rect.y))
+                        if line:
+                            self.rect.right = line[0][0]
+                    else:
+                        line = foo.rect.clipline((self.rect.x,self.rect.y),((self.rect.x + self.xdif),self.rect.y))
+                        if line:
+                            self.rect.left = line[0][0]
             if not ycolld:
                 self.rect.y += self.ydif
+            else:
+                for foo in coll_group:
+                    if foo.rect.center[1] > self.rect.center[1]:
+                        line = foo.rect.clipline((self.rect.x,self.rect.y),((self.rect.x),(self.rect.y + self.ydif)))
+                        if line:
+                            self.rect.bottom = line[0][1]
+                    else:
+                        line = foo.rect.clipline((self.rect.x,self.rect.y),((self.rect.x),(self.rect.y + self.ydif)))
+                        if line:
+                            self.rect.top = line[0][1]
         else:
             self.rect.x += self.xdif
             self.rect.y += self.ydif
             
-        player_collide_list = pygame.sprite.spritecollide(self, debug_wallcol, False)
-
-        for foo in player_collide_list:
-            if self.rect.x <= foo.rect.x:
-                if self.rect.right > foo.rect.left:
-                    self.rect.x -= 1
-            else:
-                if self.rect.left < foo.rect.right:
-                    self.rect.x += 1
-            #self.rect.y = oldy
-            if self.rect.y <= foo.rect.y:
-                if self.rect.bottom > foo.rect.top:
-                    self.rect.y += 1
-            else:
-                if self.rect.top < foo.rect.bottom:
-                    self.rect.y -= 1
-
-            #self.rect.x = oldx
+##        player_collide_list = pygame.sprite.spritecollide(self, debug_wallcol, False)
+##
+##        for foo in player_collide_list:
+##            if self.rect.x <= foo.rect.x:
+##                if self.rect.right > foo.rect.left:
+##                    self.rect.x -= 1
+##            else:
+##                if self.rect.left < foo.rect.right:
+##                    self.rect.x += 1
+##            #self.rect.y = oldy
+##            if self.rect.y <= foo.rect.y:
+##                if self.rect.bottom > foo.rect.top:
+##                    self.rect.y += 1
+##            else:
+##                if self.rect.top < foo.rect.bottom:
+##                    self.rect.y -= 1
+##
+##            #self.rect.x = oldx
 
 
 gotip = False
@@ -591,10 +651,17 @@ while not done:
     debug_list.update()
 
     # -- flip display to reveal new position of objects
+	
     pygame.display.flip()
+
+
+    #fps = str(int(clock.get_fps()))
+    #fps_text = font.render(fps, 1, pygame.Color("coral"))
+    #screen.blit(fps_text, (10,0))
 
     # - the clock ticks over
     clock.tick(60)
+
 
 # - end of game loop
 

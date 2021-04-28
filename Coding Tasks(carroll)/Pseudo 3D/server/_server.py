@@ -7,7 +7,7 @@ import random
 #the ipv4 adress must then be copied from that and put below
 
 #put the ipv4 address here
-server = "10.0.5.159"
+server = "10.0.6.204"
 #port is the standart port 5555 for simplicity
 port = 5555
 rawmap = open("map.txt","r")
