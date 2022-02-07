@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+	<title>pog</title>
+	<form actiion = "/emailentry.html.process()">
+		<label for="inputid">ID:</label>
+		<input type="text" id="inputid" name="iid"><br>
+		<input type="submit" value = "Submit">
+		<button type="button" onclick="process()">Submit</button>
+	</form>
+	<script>
+		function process(){
+		alert(document.getElementById("inputid").value + "@dulwich.org.uk");};
+	</script>
+</html>

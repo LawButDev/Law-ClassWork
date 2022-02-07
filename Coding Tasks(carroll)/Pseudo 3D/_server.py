@@ -3,16 +3,20 @@ from _thread import *
 import sys
 import random
 import pickle
+import client.classes
+from client.classes import pseudoplayer
 
 #in order to ser this up the command 'ipconfig' must be run in command prompt
 #the ipv4 adress must then be copied from that and put below
 
 #put the ipv4 address here
-server = "10.0.11.63"
+server = "10.0.0.89"
 #port is the standart port 5555 for simplicity
 port = 5555
 rawmap = open("map.txt","r")
 maxplayers = 2
+
+players = []
 
 rawmap.seek(0)
 rawmapsize = rawmap.readline()
@@ -65,36 +69,45 @@ test = initialpack()
 
 pos = [(0,0),(100,100)]
 
+
+currentPlayer = 0
+playercount = 0
+
 def threaded_client(conn, player):
     #conn.send(str.encode("Connected"))
     ###conn.send(str.encode(make_pos(pos[player])))
-    conn.send(str.encode(initialpack()))
-    reply = (0,0)
+    reply = conn.send(str.encode(initialpack()))
+    players.append(pseudoplayer(0,0,0))
+    #reply = (0,0)
     while True:
-        reply = pos[1-player]
+        reply = players[0]
+        print(reply)
         try:
-            data = read_pos(conn.recv(2048).decode())
+            print("pog")
+            data = pickle.loads(conn.recv(2048))
+            print("0")
             #reply = data.decode("utf-8")
-            pos[player] = data
+            players[player] = data
+            print("1")
 
             if not data:
                 print ("disconnected")
                 break
             else:
-                #print("received: ", data)
-                #print("sending: ", reply)
+                print("received: ", data)
+                print("sending: ", reply)
                 pog = True
+            print("2")
+            conn.sendall(pickle.dumps(reply))
+            print("3")
 
-            conn.sendall(str.encode(make_pos(reply)))
-
-        except:
+        except error as e:
+            print(e)
             break
     print("lost connection")
-    playercount -= 1
+    #playercount -= 1
     conn.close()
 
-currentPlayer = 0
-playercount = 0
 
 while True:
     conn, addr = s.accept()
