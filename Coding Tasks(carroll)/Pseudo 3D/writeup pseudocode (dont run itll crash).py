@@ -1,3 +1,7 @@
+
+
+
+
 dist = math.sqrt((abs(player.center.x-start[0]))**2 + (player.center.y-start[1])**2)
     if dist < mindis:
         colx = start[0]
@@ -341,3 +345,335 @@ self.rect.y += self.ydif
 
 
 
+sprite = col.sprite
+loc = -1
+if ((start[0] == col.rect.left) or (start[0] == col.rect.right)) and ((start[1] == col.rect.top) or (start[1] == col.rect.bottom)):
+    loc = 0
+elif ((start[0] == col.rect.left) or (start[0] == col.rect.right - 1)):
+    loc = abs(int(start[1]-col.rect.top))
+elif ((start[1] == col.rect.top) or (start[1] == col.rect.bottom - 1)):
+    loc = abs(int(start[0]-col.rect.left))
+else:
+    loc = 32
+
+corsprite = pygame.Surface.subsurface(sprite, (loc, 0, 1, 64))
+
+
+dispsprite = pygame.transform.scale(corsprite,(2,int(projheight)*2))
+cont_rect = pygame.Rect((0,0),(2, int(projheight)*2))
+
+screen.blit(dispsprite,(2*f,1*(size[1]//2-projheight//1)),cont_rect)
+
+
+
+
+#floor render
+pygame.draw.rect(screen,(100,100,100,255),(0,size[1]//2,size[0], size[1] // 2),0)
+
+#ceilling render
+pygame.draw.rect(screen,(0,0,100,255),(0,0,size[0], size[1] // 2),0)
+
+
+dcc = max((255-((cordist)//2)**1), 10)
+overlayline = pygame.Surface((2,int(projheight * 2)),pygame.SRCALPHA)
+overlayline.fill((0,0,0,255-dcc))
+screen.blit(overlayline,(2*f,1*(size[1]//2-projheight//1)))
+
+
+
+class ent(pygame.sprite.Sprite):
+    def __init__(self,x_ref,y_ref,x_size,y_size,sprite):
+        super().__init__()
+        self.type = "sprite"
+        self.image = pygame.Surface((x_size,x_size),pygame.SRCALPHA)
+        self.image.fill((70,150,200,255))
+        self.x_size = x_size
+        self.sprite = sprite
+        self.rect = self.image.get_rect()
+        self.rect.center = (x_ref,y_ref)
+        self.checkedthisframe = False
+        self.firstray = 0
+        self.firstdist = 0
+        
+        self.spritecentdist = math.sqrt((abs(PC.rect.center[0]-self.rect.center[0]))**2 + (abs(PC.rect.center[1]-self.rect.center[1]))**2)
+        self.spritecentang = math.degrees((math.atan2((PC.rect.center[1]-self.rect.center[1]),(PC.rect.center[0]-self.rect.center[0])))%(2*math.pi))
+    def update(self):
+        self.spritecentdist = math.sqrt((abs(PC.rect.center[0]-self.rect.center[0]))**2 + (abs(PC.rect.center[1]-self.rect.center[1]))**2)
+        self.spritecentang = math.degrees((math.atan2((-PC.rect.center[1]+self.rect.center[1]),(-PC.rect.center[0]+self.rect.center[0])))%(2*math.pi))
+    def angcompare(self,num1,num2):
+        num1div = num1 // 90
+        num1rem = num1 % 90
+        num2div = num2 // 90
+        num2rem = num2 % 90
+        if num1div >= 3: num1div = 0
+        if num1div <= num2div and num1rem <= num2rem:
+            return True
+        else:
+            return False
+
+
+if col.type == "sprite":
+    spriterot = anglecor(self.rot - 90)
+    
+    #concept of sprite / ray collisions is that the pixels are only one wide, therefor for every ray cast onto a sprite only the width of the sprite (i.e) 16 points must
+    # checked, therefore if we know the equation of each line in y=mx+c we can loop through the 16 points on the sprite line and see if the two lines intersect
+    #  from there you can find the pixel that point covers and render the sprite (only theoretical though, no fucking clue if itll work lol)
+    
+    
+    clippedline = col.rect.clipline((self.rect.center[0],self.rect.center[1]),(self.rect.center[0] + xdif , self.rect.center[1] + ydif))
+    if clippedline:
+        #print("y = " + str(m) + "x + " + str(c))
+        start,end = clippedline
+        #pygame.draw.line(screen, (255,255,10,175), (start),(end),2)
+        dist = math.sqrt(((self.rect.center[0]-start[0]))**2 + (self.rect.center[1]-start[1])**2)                        
+
+        #print(spritecentang,self.rot%90)
+        if True:#dist < spritedist: # and dist < col.x_size:
+            spritedist = dist
+            sprite = col.sprite
+            spriteloc = 0
+
+            #concept of new sprite render is to find the length of the line between the ray and the centre of the sprite, and if it is within the sprite boudnary working from there
+            #this line finds the distance between the angles for later calculation
+            angdif = abs(i - col.spritecentang) % 360
+            #since the difference can be maximum 1
+            if angdif >= 180 : angdif = 360 - angdif
+            #swapped line to cause errors
+            relspritedist = ((math.tan(math.radians(abs(i % 90 - col.spritecentang%90)))*col.spritecentdist))
+            #relspritedist = abs((math.tan(math.radians(abs(angdif)))*col.spritecentdist))
+            if relspritedist < 0: relspritedist = 0
+            if relspritedist <= col.x_size // 2:
+                #Render
+
+i = 0
+while i < len(sortedsprite):
+    spritedist = sortedsprite[i][0]
+    spritecorsprite = sortedsprite[i][1]
+    spritecordist = spritedist
+    spritecordist = math.cos(math.radians(corang))* spritedist
+    if spritecordist == 0: spritecordist += 0.000001
+
+    #sprite height calc based on distance to proj plane(porjdist)
+    spriteprojheight = (unit/spritecordist)*projdist
+    if spriteprojheight >= size[1] * maxsizemult : spriteprojheight = size[1] * maxsizemult
+
+    spritedispsprite = pygame.transform.scale(spritecorsprite,(2,int(spriteprojheight)*2))
+    spritecont_rect = pygame.Rect((0,0),(2, int(spriteprojheight)*2))
+    
+    if spritedist < cordist:
+        screen.blit(spritedispsprite,(2*f,1*(size[1]//2-spriteprojheight//1)))#,spritecont_rect)
+    i += 1
+
+j = 0
+sortedsprite = []
+
+if len(spriteord) < 1:                
+    j = 100
+else:                
+    sortedsprite.append((spriteord[0][0],spriteord[0][1]))
+while j <= len(spriteord) - 1:
+    stored = spriteord[j][0]
+    inserted = False
+    k = len(sortedsprite) - 1
+    sortedsprite.append((9999,2333))
+    while not inserted:
+        if k >= 0:
+            if stored > sortedsprite[k][0]:
+                sortedsprite[k+1] = (sortedsprite[k][0],sortedsprite[k][1])
+                sortedsprite[k] = (spriteord[j][0],spriteord[j][1])
+                #sortedsprite[k] = (spriteord,0)
+                k -= 1
+            else:
+                sortedsprite[k+1] = (spriteord[j][0],spriteord[j][1])
+                inserted = True
+        else: inserted = True
+            
+    j += 1
+
+
+
+
+
+
+
+
+
+    ### START OF SERVER WORK ###
+
+import socket
+import sys
+import pygame
+
+#in order to ser this up the command 'ipconfig' must be run in command prompt
+#the ipv4 adress must then be copied from that and put below
+
+#put the ipv4 address here
+server = "10.0.4.33"
+#port is the standart port 5555 for simplicity
+port = 5555
+
+print("server: " + server, "port: " + str(port))
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+try:
+    s.bind((server,port))
+except socket.error as e:
+    str(e)
+
+## tells the server to begin looking for a client that wants to connect
+s.listen(2)
+print("waiting for a connection, server started")
+
+while True:
+    conn, addr = s.accept()
+    print("conntected to:", addr)
+
+
+
+import socket
+
+class Network:
+    def __init__(self,ip):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server = ip
+        self.port = 5555
+        self.addr = (self.server, self.port)
+        self.id = self.connect()
+        print(self.id)
+
+
+    def connect(self):
+        try:
+            self.client.connect(self.addr)
+            return self.client.recv(2048).decode()
+        except:
+            pass
+
+
+
+
+
+
+from _thread import *
+
+maxplayers = 15
+
+players = []
+currentplayers = []
+
+def threaded_client(conn, player):
+    reply = conn.send(str.encode(initialpack(player)))
+    while True:
+        indexval = currentplayers.index(player)
+        toreply = players.copy()
+        #print(indexval)
+        toreply.pop(indexval)
+        toreply.insert(0,players[indexval])
+        #print(currentplayers)
+        reply = toreply
+        try:
+            data = conn.recv(2048)
+            reply = data.decode("utf-8")                            
+
+            if not data:
+                print ("disconnected")
+                break
+            else:
+                elsefiller = True
+            conn.sendall(reply)
+
+        except:
+            break
+    print("lost connection")
+    indexval = currentplayers.index(player)
+    players.pop(indexval)
+    currentplayers.pop(indexval)
+    conn.close()
+
+while True:
+    conn, addr = s.accept()
+    print("conntected to:", addr)
+
+    if (len(currentplayers) <= maxplayers):
+        start_new_thread(threaded_client, (conn,currentPlayer))
+        playercount += 1
+        currentPlayer += 1
+
+    for i in range(0,playercount):
+        print("player " + str(i))
+
+
+
+
+rawmap = open("map.txt","r")
+rawmap.seek(0)
+rawmapsize = rawmap.readline()
+rawmapsize = rawmapsize.split(" ")
+mapsize = (int(rawmapsize[0]),int(rawmapsize[1]))
+savedmap = []
+mapstr = ""
+for line in range(mapsize[1] ):
+    temp = rawmap.readline()
+    savedmap.append(temp)
+    mapstr += str(temp)# + "|")
+
+spawnpoints = []
+spawncount = 0
+rawmap.seek(0)
+for y in range (mapsize[1] ):
+    ystr = savedmap[y]
+    for x in range (mapsize[0]):
+        if ystr[x] == "s":
+            spawnpoints.append(str(x) + " " + str(y))
+            spawncount += 1
+
+def initialpack(playerint):
+    return (str(mapsize[0]) + " " + str(mapsize[1]) + "/" + spawnpoints[random.randint(0,spawncount) - 1] + "/" + mapstr + "/" + str(playerint))
+
+def threaded_client(conn, player):
+    reply = conn.send(str.encode(initialpack(player)))
+
+
+
+try:
+    data = pickle.loads(conn.recv(2048))
+    indexval = currentplayers.index(player)
+                    
+
+    if not data:
+        print ("disconnected")
+        break
+    else:
+        pog = True
+    conn.sendall(pickle.dumps(reply))
+
+
+cordtup = (PC.rect.x,PC.rect.y)
+    playersent = pseudoplayer(PC.rect.x,PC.rect.y,PC.rot,clientid)
+    playersent.todamage = todamage
+    playersent.health = PC.health
+    todamage = -1
+    reply = interface.send(playersent)
+    templayer = reply.pop(0)
+    if templayer.health < 0:
+        PC.rect.x = templayer.posx * unit
+        PC.rect.y = templayer.posy * unit
+        PC.rot = templayer.rotation
+        PC.health = 100
+    else:
+        PC.health = templayer.health
+    while len(activeplayers) < len(reply):
+        placeholder = enemy(0,0,0,-1)
+        debug_raycol.add(placeholder)
+        debug_list.add(placeholder)
+        activeplayers.append(placeholder)
+        print("add")
+    while len(activeplayers) > len(reply):
+        activeplayers[-1].kill()
+        activeplayers.pop()
+        print("remove")
+    index = 0
+    for i in reply:
+        activeplayers[index].redefine(i.posx,i.posy, i.rotation,i.id)
+        index += 1
